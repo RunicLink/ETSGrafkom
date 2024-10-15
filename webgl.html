@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL Object Movement</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+
+        #controls {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+            background-color: #ffffff;
+            border-top: 1px solid #ddd;
+        }
+
+        #canvas-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 80vh;
+        }
+
+        canvas {
+            border: 1px solid #ddd;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h4 {
+            margin-top: 0;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .control-group {
+            flex-basis: 30%;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        input[type="color"],
+        input[type="range"],
+        input[type="number"] {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        button {
+            display: inline-block;
+            margin: 5px 0;
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        p {
+            margin: 10px 0;
+        }
+
+        #physics-calc {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="canvas-container">
+        <canvas id="gl-canvas" width="4000" height="1000"></canvas>
+    </div>
+
+    <div id="controls">
+        <!-- Color Control Section -->
+        <div class="control-group">
+            <h4>Color Control</h4>
+            <label>Base Color:</label>
+            <input type="color" id="baseColorPicker" value="#ff0000">
+            <label>Ambient Light Color:</label>
+            <input type="color" id="ambientColorPicker" value="#808080">
+            <label>Diffuse Light Color:</label>
+            <input type="color" id="diffuseColorPicker" value="#ffffff">
+            <label>Specular Light Color:</label>
+            <input type="color" id="specularColorPicker" value="#ffffff">
+        </div>
+
+        <!-- Light Control Section -->
+        <div class="control-group">
+            <h4>Light Control</h4>
+            <label>Light Position X:</label>
+            <input type="range" id="lightXSlider" min="-5" max="5" value="1" step="0.1">
+            <label>Light Position Y:</label>
+            <input type="range" id="lightYSlider" min="-5" max="5" value="1" step="0.1">
+            <label>Light Position Z:</label>
+            <input type="range" id="lightZSlider" min="-5" max="5" value="1" step="0.1">
+        </div>
+
+        <!-- Movement and Physics Control Section -->
+        <div class="control-group">
+            <h4>Rotate and Shape</h4>
+            <button id="ButtonX">Rotate X</button>
+            <button id="ButtonY">Rotate Y</button>
+            <button id="ButtonZ">Rotate Z</button>
+            <button id="ButtonT">Toggle Rotation</button>
+            <button id="ButtonShape">Change Shape</button>
+
+            <h4>Move Object</h4>
+            <button id="moveLeft">Move Left</button>
+            <button id="moveRight">Move Right</button>
+            <button id="moveUp">Move Up</button>
+            <button id="moveDown">Move Down</button>
+        </div>
+
+        <div class="control-group">
+          <h4>Physics Calculation</h4>
+            <label>Force (N):</label>
+            <input type="number" id="forceInput" value="1">
+            <label>Mass (kg):</label>
+            <input type="number" id="massInput" value="1">
+            <button id="calculateSpeed">Calculate Speed</button>
+            <p>Speed (m/s): <span id="speedDisplay">0</span></p>
+
+            <h4>Manual Speed Input</h4>
+            <label>Manual Speed (m/s):</label>
+            <input type="number" id="manualspeedInput" value="0">
+            <button id="applyManualspeed">Apply Speed Input</button>
+            <p>Speed (m/s): <span id="manualSpeedDisplay">0</span></p>
+
+            <!-- Launch Parameters -->
+            <h4>Launch Parameters</h4>
+            <label for="speedInput">Launch Speed (m/s):</label>
+            <input type="number" id="speedInput" value="10">
+            <label for="angleInput">Launch Angle (degrees):</label>
+            <input type="number" id="angleInput" value="45">
+            <label for="gravityInput">Gravity (m/s²):</label>
+            <input type="number" id="gravityInput" value="-9.81">
+            <button id="launchButton">Launch</button>
+        </div>
+
+        <div class="control-group">
+            <h4>Stop</h4>
+            <button id="stopButton">Stop</button>
+        </div>
+
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        #version 300 es
+        in vec4 aPosition;
+        in vec3 aNormal;
+        out vec3 vNormal;
+        out vec3 vPosition;
+
+        uniform mat4 uModelViewMatrix;
+        uniform mat4 uProjectionMatrix;
+
+        void main() {
+            vec4 transformedPosition = uModelViewMatrix * aPosition;
+            vPosition = transformedPosition.xyz;
+            vNormal = mat3(uModelViewMatrix) * aNormal;
+            gl_Position = uProjectionMatrix * transformedPosition;
+        }
+    </script>
+
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        #version 300 es
+        precision mediump float;
+
+        in vec3 vNormal;
+        in vec3 vPosition;
+        out vec4 fColor;
+
+        uniform vec4 uBaseColor;
+        uniform vec4 uAmbientProduct;
+        uniform vec4 uDiffuseProduct;
+        uniform vec4 uSpecularProduct;
+        uniform vec4 uLightPosition;
+        uniform float uShininess;
+
+        void main() {
+            vec3 N = normalize(vNormal);
+            vec3 L = normalize(uLightPosition.xyz - vPosition);
+            vec3 E = normalize(-vPosition);
+            vec3 H = normalize(L + E);
+
+            vec4 ambient = uAmbientProduct;
+            float Kd = max(dot(L, N), 0.0);
+            vec4 diffuse = Kd * uDiffuseProduct;
+            float Ks = pow(max(dot(N, H), 0.0), uShininess);
+            vec4 specular = Ks * uSpecularProduct;
+
+            if (Kd <= 0.0) specular = vec4(0.0);
+            fColor = (ambient + diffuse + specular) * uBaseColor;
+            fColor.a = 1.0;
+        }
+    </script>
+
+    <script src="initShaders.js"></script>
+    <script src="MVnew.js"></script>
+    <script src="main.js"></script>
+</body>
+
+</html>
