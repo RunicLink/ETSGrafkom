@@ -132,7 +132,7 @@ function init() {
         flag = !flag;
     };
     document.getElementById("ButtonShape").onclick = function () {
-        shape = (shape === "cube") ? "pyramid" : "cube"
+        shape = (shape === "cube") ? "pyramid" : "cube";
         positionsArray = [];
         normalsArray = [];
 
@@ -223,9 +223,10 @@ function init() {
         var mass = parseFloat(document.getElementById("massInput").value);
         
         if (!isNaN(force) && !isNaN(mass) && mass > 0) {
+            // Remove the time part and directly calculate speed
             speed = force / mass; 
-            document.getElementById("speedDisplay").innerText =  + Math.abs(speed).toFixed(2) + " m/s²"; 
-            isMoving = true;
+            document.getElementById("speedDisplay").innerText =  + Math.abs(speed).toFixed(2) + " m/s²"; // Update display text to show speed
+            isMoving = true; // Start moving the object
         } else {
             document.getElementById("speedDisplay").innerText = "Invalid input.";
         }
@@ -255,11 +256,11 @@ document.getElementById("launchButton").onclick = function () {
     gravity = parseFloat(document.getElementById("gravityInput").value);
 
     if (!isNaN(launchAngle) && !isNaN(gravity)) {
-        angle = launchAngle * (Math.PI / 180); 
-        speed = parseFloat(document.getElementById("speedInput").value); 
+        angle = launchAngle * (Math.PI / 180); // Convert angle to radians
+        speed = parseFloat(document.getElementById("speedInput").value); // Assume user input speed
         velocityX = speed * Math.cos(angle);
         velocityY = speed * Math.sin(angle);
-        isMove = true; 
+        isMove = true; // Start moving the object
     }
 };
 
@@ -280,7 +281,7 @@ function render() {
     }
 
     if (isMove) {
-        positionX -= velocityX * 0.1;
+        positionX -= velocityX * 0.1; // Update horizontal position
         velocityY += gravity * 0.1; // Apply gravity
         positionY += velocityY * 0.1; // Update vertical position
         
